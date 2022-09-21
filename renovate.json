@@ -19,6 +19,7 @@
   ],
   "packageRules": [
     {
+      "packageNames": ["rclone/rclone", "restic/restic"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     },
