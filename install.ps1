@@ -1,7 +1,7 @@
 . .\config.ps1
 . .\secrets.ps1
 
-$restic_version = "0.12.1"
+$restic_version = "0.14.0"
 $rclone_version = "1.59.1"
 
 # download restic
