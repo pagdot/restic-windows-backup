@@ -2,7 +2,7 @@
 . .\secrets.ps1
 
 $restic_version = "0.14.0"
-$rclone_version = "1.59.1"
+$rclone_version = "v1.59.2"
 
 # download restic
 if(-not (Test-Path $ResticExe)) {
