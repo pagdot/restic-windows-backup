@@ -19,6 +19,10 @@
   ],
   "packageRules": [
     {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
       "packageNames": ["restic/restic"],
       "extractVersion": "^v(?<version>.*)$"
     }
