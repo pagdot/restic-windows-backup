@@ -268,48 +268,29 @@ function Invoke-Backup {
     return $return_value
 }
 
-function Send-Email {
-    Param($SuccessLog, $ErrorLog)
-    $password = ConvertTo-SecureString $ResticEmailPassword -AsPlainText -Force
-    $credentials = New-Object System.Management.Automation.PSCredential ($ResticEmailUsername, $password)
+function Send-Healthcheck-Start {
+    Invoke-RestMethod $HealthcheckUrl/start
+}
 
-    $status = "SUCCESS"
-    $success_after_failure = $false
+function Send-Healthcheck-End {
+    Param($SuccessLog, $ErrorLog)
+
+    $postfix = "" # Success
     $body = ""
     if (($null -ne $SuccessLog) -and (Test-Path $SuccessLog) -and (Get-Item $SuccessLog).Length -gt 0) {
         $body = $(Get-Content -Raw $SuccessLog)
-        # if previous run contained an error, send the success email confirming that the error has been resolved
-        # (i.e. get previous error log, if it's not empty, trigger the send of the success-after-failure email)
-        $previous_error_log = Get-ChildItem $LogPath -Filter '*err.txt' | Sort-Object -Descending LastWriteTime | Select-Object -Skip 1 | Select-Object -First 1
-        if(($null -ne $previous_error_log) -and ($previous_error_log.Length -gt 0)){
-            $success_after_failure = $true
-        }
     }
     else {
         $body = "Crtical Error! Restic backup log is empty or missing. Check log file path."
-        $status = "ERROR"
+        $status = "/fail"
     }
     $attachments = @{}
     if (($null -ne $ErrorLog) -and (Test-Path $ErrorLog) -and (Get-Item $ErrorLog).Length -gt 0) {
-        $attachments = @{Attachments = $ErrorLog}
-        $status = "ERROR"
+        $body = $(Get-Content -Raw $SuccessLog) $(Get-Content -Raw $ErrorLog) | Select -Last 1000
+        $status = "/fail"
     }
-    if((($status -eq "SUCCESS") -and ($SendEmailOnSuccess -ne $false)) -or ((($status -eq "ERROR") -or $success_after_failure) -and ($SendEmailOnError -ne $false))) {
-        $subject = "$env:COMPUTERNAME Restic Backup Report [$status]"
 
-        # create a temporary error log to log errors; can't write to the same file that Send-MailMessage is reading
-        $temp_error_log = $ErrorLog + "_temp"
-
-        Send-MailMessage @ResticEmailConfig -From $ResticEmailFrom -To $ResticEmailTo -Credential $credentials -Subject $subject -Body $body @attachments 3>&1 2>> $temp_error_log
-
-        if(-not $?) {
-            Write-Output "[[Email]] Sending email completed with errors" | Tee-Object -Append $temp_error_log | Tee-Object -Append $SuccessLog
-        }
-
-        # join error logs and remove the temporary
-        Get-Content $temp_error_log | Add-Content $ErrorLog
-        Remove-Item $temp_error_log
-    }
+    Invoke-RestMethod -Uri $HealthcheckUrl$postfix -Method Post -Body $body
 }
 
 function Invoke-ConnectivityCheck {
@@ -407,12 +388,14 @@ function Invoke-Main {
     
     # initialize config
     . $ConfigScript
+
+    Send-Healthcheck-Start
     
     Get-BackupState
 
     if(!(Test-Path $LogPath)) {
         Write-Error "[[Backup]] Log file directory $LogPath does not exist. Exiting."
-        Send-Email
+        Send-Healthcheck-End
         exit
     }
 
@@ -437,7 +420,7 @@ function Invoke-Main {
                 $total_attempts = $GlobalRetryAttempts - $attempt_count + 1
                 Write-Output "Succeeded after $total_attempts attempt(s)" | Tee-Object -Append $success_log
                 Invoke-HistoryCheck $success_log $error_log
-                Send-Email $success_log $error_log
+                Send-Healthcheck-End $success_log $error_log
                 break;
             }
         }
@@ -454,7 +437,7 @@ function Invoke-Main {
         }
         if($internet_available -eq $true) {
             Invoke-HistoryCheck $success_log $error_log
-            Send-Email $success_log $error_log
+            Send-Healthcheck-End $success_log $error_log
         }
         if($attempt_count -gt 0) {
             Start-Sleep (15*60)
