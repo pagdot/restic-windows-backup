@@ -12,6 +12,8 @@ $LogRetentionDays = 30
 $InternetTestAttempts = 10
 $GlobalRetryAttempts = 4
 $IgnoreMissingBackupSources = $false
+$env:Path += ";$InstallPath;"
+$env:RCLONE_CONFIG = Join-Path $InstallPath 'rclone.conf'
 
 # maintenance configuration
 $SnapshotMaintenanceEnabled = $true
