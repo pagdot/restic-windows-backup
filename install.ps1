@@ -17,7 +17,7 @@ if(-not (Test-Path $ResticExe)) {
     Invoke-WebRequest -Uri $url -OutFile $output
     Expand-Archive -LiteralPath $output $InstallPath
     Remove-Item $output
-    Get-ChildItem *.exe | Rename-Item -NewName $ResticExeName
+    Get-ChildItem $InstallPath\restic_*.exe | Rename-Item -NewName $InstallPath\$ResticExeName
 }
 
 # download rclone
@@ -33,14 +33,14 @@ if(-not (Test-Path $RcloneExe)) {
     Invoke-WebRequest -Uri $url -OutFile $output
     Expand-Archive -LiteralPath $output $InstallPath
     Remove-Item $output
-    Get-ChildItem *.exe | Rename-Item -NewName $RcloneExeName
+    Move-Item -Path $InstallPath\rclone-*\rclone.exe -Destination $InstallPath\$RcloneExeName
+    Remove-Item -Recurse $InstallPath\rclone-*/
 }
 
 
 # Create log directory if it doesn't exit
 if(-not (Test-Path $LogPath)) {
     New-Item -ItemType Directory -Force -Path $LogPath | Out-Null
-    Write-Output "[[Init]] Repository successfully initialized."
 }
 
 # Create the local exclude file
