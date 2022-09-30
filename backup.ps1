@@ -282,12 +282,11 @@ function Send-Healthcheck-End {
     }
     else {
         $body = "Crtical Error! Restic backup log is empty or missing. Check log file path."
-        $status = "/fail"
+        $postfix = "/fail"
     }
-    $attachments = @{}
     if (($null -ne $ErrorLog) -and (Test-Path $ErrorLog) -and (Get-Item $ErrorLog).Length -gt 0) {
-        $body = $(Get-Content -Raw $SuccessLog) $(Get-Content -Raw $ErrorLog) | Select -Last 1000
-        $status = "/fail"
+        $body = $(Get-Content -Raw $SuccessLog) | Select-Object -Last 1000
+        $postfix = "/fail"
     }
 
     Invoke-RestMethod -Uri $HealthcheckUrl$postfix -Method Post -Body $body
